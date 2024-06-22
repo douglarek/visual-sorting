@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Visualization Sorting Application</title>
+	<style>
+		body,
+		html {
+			margin: 0;
+			padding: 0;
+			width: 100%;
+			height: 100%;
+			font-family: Arial, sans-serif;
+			overflow: hidden;
+		}
+
+		.container {
+			display: flex;
+			flex-direction: column;
+			width: 100%;
+			height: 100%;
+			background-color: #f0f0f0;
+		}
+
+		.controls {
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			padding: 10px;
+			background-color: #333;
+			color: white;
+		}
+
+		button,
+		select {
+			margin: 0 10px;
+			padding: 10px 15px;
+			font-size: 16px;
+			cursor: pointer;
+			background-color: #4CAF50;
+			color: white;
+			border: none;
+			border-radius: 5px;
+			transition: background-color 0.3s;
+		}
+
+		button:hover,
+		select:hover {
+			background-color: #45a049;
+		}
+
+		button:disabled,
+		select:disabled {
+			background-color: #cccccc;
+			cursor: not-allowed;
+		}
+
+		#visualizer {
+			flex-grow: 1;
+			display: flex;
+			justify-content: center;
+			align-items: flex-end;
+			padding: 20px;
+			background-color: #ffffff;
+		}
+
+		.bar-container {
+			display: flex;
+			flex-direction: column;
+			justify-content: flex-end;
+			align-items: center;
+			margin: 0 2px;
+			height: 100%;
+		}
+
+		.bar {
+			width: 30px;
+			background-color: #3498db;
+			transition: height 0.5s ease-in-out, background-color 0.3s ease;
+			box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+		}
+
+		.number {
+			margin-top: 5px;
+			font-size: 14px;
+			font-weight: bold;
+		}
+
+		.pivot {
+			background-color: #e74c3c;
+		}
+
+		.comparing {
+			background-color: #f1c40f;
+		}
+
+		.sorted {
+			background-color: #2ecc71;
+		}
+	</style>
+</head>
+
+<body>
+	<div class="container">
+		<div class="controls">
+			<button onclick="generateRandomNumbers()">Generate Random Numbers</button>
+			<select id="sortAlgorithm">
+				<option value="quickSort">Quick Sort</option>
+				<option value="bucketSort">Bucket Sort</option>
+				<option value="heapSort">Heap Sort</option>
+				<option value="selectionSort">Selection Sort</option>
+				<option value="bubbleSort">Bubble Sort</option>
+			</select>
+			<button onclick="sortNumbers()">Sort</button>
+		</div>
+		<div id="visualizer"></div>
+	</div>
+
+	<script>
+		let numbers = [];
+		function generateRandomNumbers() {
+			numbers = Array.from({ length: 30 }, () => Math.floor(Math.random() * 100) + 1);
+			visualizeNumbers(numbers);
+		}
+
+		function visualizeNumbers(nums) {
+			const visualizer = document.getElementById('visualizer');
+			visualizer.innerHTML = '';
+			const maxHeight = visualizer.clientHeight - 40; // Space for number labels
+			const containerWidth = visualizer.clientWidth;
+			const barWidth = Math.floor(containerWidth / 30) - 4; // 4px for margins
+
+			nums.forEach((num, index) => {
+				const barContainer = document.createElement('div');
+				barContainer.className = 'bar-container';
+
+				const bar = document.createElement('div');
+				bar.className = 'bar';
+				bar.style.height = `${(num / 100) * maxHeight}px`;
+				bar.style.width = `${barWidth}px`;
+
+				const numberLabel = document.createElement('div');
+				numberLabel.className = 'number';
+				numberLabel.textContent = num;
+
+				barContainer.appendChild(bar);
+				barContainer.appendChild(numberLabel);
+				visualizer.appendChild(barContainer);
+			});
+		}
+
+
+		async function quickSort(arr, start = 0, end = arr.length - 1) {
+			if (start >= end) {
+				return;
+			}
+
+			let pivotIndex = await partition(arr, start, end);
+			await quickSort(arr, start, pivotIndex - 1);
+			await quickSort(arr, pivotIndex + 1, end);
+
+			for (let i = start; i <= end; i++) {
+				updateBarColor(i, 'sorted');
+				await sleep(50);
+			}
+		}
+
+		async function partition(arr, start, end) {
+			updateBarColor(end, 'pivot');
+			let pivotValue = arr[end];
+			let pivotIndex = start;
+
+			for (let i = start; i < end; i++) {
+				updateBarColor(i, 'comparing');
+				await sleep(100);
+
+				if (arr[i] < pivotValue) {
+					await swap(arr, i, pivotIndex);
+					pivotIndex++;
+				}
+
+				updateBarColor(i, '');
+			}
+
+			await swap(arr, pivotIndex, end);
+			updateBarColor(pivotIndex, '');
+			return pivotIndex;
+		}
+		async function bucketSort(arr) {
+			const n = arr.length;
+			const max = Math.max(...arr);
+			const min = Math.min(...arr);
+			const bucketCount = Math.min(n, max - min + 1);
+
+			// Create buckets
+			const buckets = new Array(bucketCount).fill().map(() => []);
+
+			// Distribute elements into buckets
+			for (let i = 0; i < n; i++) {
+				const bucketIndex = Math.floor((arr[i] - min) / (max - min + 1) * (bucketCount - 1));
+				buckets[bucketIndex].push(arr[i]);
+				updateBarColor(i, 'comparing');
+				await sleep(100);
+			}
+
+			// Clear the original array
+			arr.length = 0;
+
+			// Concatenate buckets back into the original array
+			for (let i = 0; i < buckets.length; i++) {
+				for (let j = 0; j < buckets[i].length; j++) {
+					arr.push(buckets[i][j]);
+					visualizeNumbers(arr);
+					updateBarColor(arr.length - 1, 'sorted');
+					await sleep(100);
+				}
+			}
+		}
+
+		async function heapSort(arr) {
+			const n = arr.length;
+
+			// Build max heap
+			for (let i = Math.floor(n / 2) - 1; i >= 0; i--) {
+				await heapify(arr, n, i);
+			}
+
+			// Extract elements from heap one by one
+			for (let i = n - 1; i > 0; i--) {
+				await swap(arr, 0, i);
+				updateBarColor(i, 'sorted');
+				await heapify(arr, i, 0);
+			}
+			updateBarColor(0, 'sorted');
+		}
+
+		async function heapify(arr, n, i) {
+			let largest = i;
+			const left = 2 * i + 1;
+			const right = 2 * i + 2;
+
+			if (left < n && arr[left] > arr[largest]) {
+				largest = left;
+			}
+
+			if (right < n && arr[right] > arr[largest]) {
+				largest = right;
+			}
+
+			if (largest !== i) {
+				updateBarColor(i, 'comparing');
+				updateBarColor(largest, 'comparing');
+				await sleep(100);
+				await swap(arr, i, largest);
+				updateBarColor(i, '');
+				updateBarColor(largest, '');
+				await heapify(arr, n, largest);
+			}
+		}
+
+
+		async function selectionSort(arr) {
+			const n = arr.length;
+			for (let i = 0; i < n - 1; i++) {
+				let minIndex = i;
+				updateBarColor(i, 'pivot');
+				for (let j = i + 1; j < n; j++) {
+					updateBarColor(j, 'comparing');
+					await sleep(50);
+					if (arr[j] < arr[minIndex]) {
+						updateBarColor(minIndex, '');
+						minIndex = j;
+						updateBarColor(minIndex, 'comparing');
+					} else {
+						updateBarColor(j, '');
+					}
+				}
+				if (minIndex !== i) {
+					await swap(arr, i, minIndex);
+				}
+				updateBarColor(i, 'sorted');
+			}
+			updateBarColor(n - 1, 'sorted');
+		}
+
+		async function bubbleSort(arr) {
+			const n = arr.length;
+			for (let i = 0; i < n - 1; i++) {
+				for (let j = 0; j < n - i - 1; j++) {
+					updateBarColor(j, 'comparing');
+					updateBarColor(j + 1, 'comparing');
+					await sleep(50);
+					if (arr[j] > arr[j + 1]) {
+						await swap(arr, j, j + 1);
+					}
+					updateBarColor(j, '');
+					updateBarColor(j + 1, '');
+				}
+				updateBarColor(n - i - 1, 'sorted');
+			}
+			updateBarColor(0, 'sorted');
+		}
+
+		async function swap(arr, a, b) {
+			[arr[a], arr[b]] = [arr[b], arr[a]];
+			await animateSwap(a, b);
+		}
+
+		async function animateSwap(a, b) {
+			const bars = document.querySelectorAll('.bar-container');
+			const barWidth = bars[0].offsetWidth;
+			const temp = bars[a].innerHTML;
+
+			bars[a].style.transform = `translateX(${(b - a) * barWidth}px)`;
+			bars[b].style.transform = `translateX(${(a - b) * barWidth}px)`;
+
+			await sleep(300);
+
+			bars[a].innerHTML = bars[b].innerHTML;
+			bars[b].innerHTML = temp;
+
+			bars[a].style.transform = '';
+			bars[b].style.transform = '';
+		}
+
+
+		function updateBarColor(index, className) {
+			const bars = document.querySelectorAll('.bar');
+			bars[index].className = `bar ${className}`;
+		}
+
+		function sleep(ms) {
+			return new Promise(resolve => setTimeout(resolve, ms));
+		}
+
+		async function sortNumbers() {
+			if (numbers.length === 0) {
+				alert('Please generate random numbers first!');
+				return;
+			}
+			const buttons = document.querySelectorAll('button');
+			const select = document.querySelector('select');
+			buttons.forEach(button => button.disabled = true);
+			select.disabled = true;
+
+			const sortAlgorithm = document.getElementById('sortAlgorithm').value;
+			switch (sortAlgorithm) {
+				case 'quickSort':
+					await quickSort(numbers);
+					break;
+				case 'bucketSort':
+					await bucketSort(numbers);
+					break;
+				case 'heapSort':
+					await heapSort(numbers);
+					break;
+				case 'selectionSort':
+					await selectionSort(numbers);
+					break;
+				case 'bubbleSort':
+					await bubbleSort(numbers);
+					break;
+			}
+
+			buttons.forEach(button => button.disabled = false);
+			select.disabled = false;
+		}
+
+		// Generate random numbers on initialization
+		window.onload = generateRandomNumbers;
+		window.onresize = generateRandomNumbers;
+	</script>
+</body>
+
+</html>
